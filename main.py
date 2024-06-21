@@ -1,5 +1,7 @@
 import fugashi
 import requests
+import csv 
+from datetime import datetime 
 
 def extract_complete_words(text):
     tagger = fugashi.Tagger()
@@ -86,22 +88,64 @@ def get_all_kanji(text):
     return list(dict.fromkeys(char for char in text if is_kanji(char)))
 
 # text = "今日はいい天気ですね。肉を食べたい"
-text = "在外邦人向けサービス「NHKワールド・プレミアム」は、NHKが国内で放送するニュース・情報番組、ドラマ、音楽番組、子ども番組、スポーツ中継などから選んだ番組を24時間編成しています。"
+# text = "在外邦人向けサービス「NHKワールド・プレミアム」は、NHKが国内で放送するニュース・情報番組、ドラマ、音楽番組、子ども番組、スポーツ中継などから選んだ番組を24時間編成しています。"
+text = "2017年のベストカバーを選ぶ祭典"
 print("Input Text: " + text)
 
 # get the kanji characters
 kanji = get_all_kanji(text)
-print("Kanji: " + ', '.join(kanji))
+#print("Kanji: " + ', '.join(kanji))
+
+# get the kanji characters and their meanings and store it in a list.
+kanji_info = []
 for char in kanji:
-    character, kun_reading, on_reading, grade_level, meaning = get_kanji_character_info(char)
-    all_meanings = ', '.join(meaning)
-    print(character + " (Grade " + str(grade_level) + "): (Kun: " + kun_reading + " On: " + on_reading + "), " + all_meanings)
+    # character, kun_reading, on_reading, grade_level, meaning = get_kanji_character_info(char)
+    kanji_info.append(get_kanji_character_info(char))
+
+# sort all of the kanji characters by grade level
+kanji_info.sort(key=lambda x: x[3])
+
+# create a filename with date stamp
+now = datetime.now()
+filename = 'kanji-' + now.strftime("%m-%d-%Y_%H-%M-%S") + '.csv'
+
+with open(filename, mode='w', encoding='utf-8') as file:
+    writer = csv.writer(file)
+    writer.writerow(['Character', 'Kun Reading', 'On Reading', 'Grade Level', 'Meaning'])
+    for row in kanji_info:
+        # combine the meanings into a single string
+        all_meanings = ', '.join(row[4])
+            
+        # write the row to the csv file
+        writer.writerow([row[0], row[1], row[2], row[3], all_meanings])
+
+        # print the row to the console
+        character, kun_reading, on_reading, grade_level, meaning = row
+        print(character + " (Grade " + str(grade_level) + "): (Kun: " + kun_reading + " On: " + on_reading + "), " + all_meanings)
 
 #get the words and definitions
+word_info = []
 words = extract_complete_words(text)
-print(words)
 for word in words:
-    found_eng_meaning, jpn_word, english_meaning, part_of_speech, japanese_reading = get_english_meaning(word)
-    if(found_eng_meaning):
+    # check if the word is already in the list. If it is, skip it.
+    if not any(jpn_word == word for jpn_word, _, _, _ in word_info):
+        found_eng_meaning, jpn_word, english_meaning, part_of_speech, japanese_reading = get_english_meaning(word)
+        if(found_eng_meaning):
+            word_info.append([jpn_word, japanese_reading, part_of_speech, english_meaning])
+
+# print(words)
+
+words_filename = 'words-' + now.strftime("%m-%d-%Y_%H-%M-%S") + '.csv'
+with open(words_filename, mode='w', encoding='utf-8') as file:
+    writer = csv.writer(file)
+    writer.writerow(['Word', 'Japanese Reading', 'Part of Speech', 'English Meaning'])
+    for row in word_info:
+        writer.writerow(row)
+
+        # print the row to the console
+        jpn_word, japanese_reading, part_of_speech, english_meaning = row
         print(jpn_word + " (" + japanese_reading + "): " + "(" + part_of_speech + ") " + english_meaning)
 
+
+print("Output Kanji CSV File: " + filename)
+print("Output Words CSV File: " + words_filename)
